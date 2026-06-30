@@ -1,0 +1,451 @@
+{
+    "fecha_analisis": "2026-06-30 16:23:57",
+    "total_peticiones": 1000,
+    "escaneos_detectados": [
+        {
+            "ip": "45.33.32.156",
+            "inicio": "global",
+            "rutas_unicas": 31,
+            "peticiones": 78
+        }
+    ],
+    "errores_http": [
+        {
+            "ip": "45.33.32.156",
+            "errores": {
+                "404": 34,
+                "403": 10,
+                "500": 3
+            }
+        },
+        {
+            "ip": "48.228.22.68",
+            "errores": {
+                "500": 5,
+                "404": 4
+            }
+        },
+        {
+            "ip": "147.242.19.45",
+            "errores": {
+                "500": 5,
+                "404": 7
+            }
+        },
+        {
+            "ip": "91.240.118.172",
+            "errores": {
+                "404": 6,
+                "500": 6
+            }
+        },
+        {
+            "ip": "115.88.85.249",
+            "errores": {
+                "500": 8,
+                "404": 5
+            }
+        },
+        {
+            "ip": "183.17.75.31",
+            "errores": {
+                "500": 8,
+                "404": 4
+            }
+        },
+        {
+            "ip": "198.98.54.31",
+            "errores": {
+                "404": 7,
+                "500": 4
+            }
+        },
+        {
+            "ip": "193.32.162.55",
+            "errores": {
+                "500": 14,
+                "400": 4
+            }
+        },
+        {
+            "ip": "4.214.57.107",
+            "errores": {
+                "404": 7,
+                "500": 2
+            }
+        },
+        {
+            "ip": "76.245.102.25",
+            "errores": {
+                "404": 3,
+                "500": 6
+            }
+        },
+        {
+            "ip": "100.94.189.227",
+            "errores": {
+                "404": 5,
+                "500": 1
+            }
+        },
+        {
+            "ip": "78.159.143.216",
+            "errores": {
+                "500": 6,
+                "404": 3
+            }
+        },
+        {
+            "ip": "122.153.40.102",
+            "errores": {
+                "500": 10,
+                "404": 7
+            }
+        },
+        {
+            "ip": "23.129.64.214",
+            "errores": {
+                "500": 7,
+                "404": 3
+            }
+        },
+        {
+            "ip": "121.250.135.24",
+            "errores": {
+                "404": 3,
+                "500": 3
+            }
+        },
+        {
+            "ip": "142.166.141.134",
+            "errores": {
+                "500": 3,
+                "404": 3
+            }
+        },
+        {
+            "ip": "89.210.135.99",
+            "errores": {
+                "404": 10,
+                "500": 8
+            }
+        },
+        {
+            "ip": "69.190.10.87",
+            "errores": {
+                "404": 4,
+                "500": 4
+            }
+        },
+        {
+            "ip": "37.205.19.102",
+            "errores": {
+                "404": 5,
+                "500": 5
+            }
+        },
+        {
+            "ip": "185.220.101.45",
+            "errores": {
+                "500": 7,
+                "404": 6
+            }
+        },
+        {
+            "ip": "106.116.31.216",
+            "errores": {
+                "500": 4,
+                "404": 4
+            }
+        },
+        {
+            "ip": "179.50.116.35",
+            "errores": {
+                "404": 5,
+                "500": 3
+            }
+        },
+        {
+            "ip": "21.242.59.79",
+            "errores": {
+                "404": 5,
+                "500": 4
+            }
+        },
+        {
+            "ip": "134.214.243.147",
+            "errores": {
+                "404": 1,
+                "500": 6
+            }
+        },
+        {
+            "ip": "68.115.137.145",
+            "errores": {
+                "500": 5,
+                "404": 4
+            }
+        },
+        {
+            "ip": "50.64.21.109",
+            "errores": {
+                "404": 1,
+                "500": 3
+            }
+        },
+        {
+            "ip": "211.75.132.82",
+            "errores": {
+                "404": 6,
+                "500": 6
+            }
+        },
+        {
+            "ip": "207.34.44.100",
+            "errores": {
+                "500": 4,
+                "404": 4
+            }
+        },
+        {
+            "ip": "85.121.25.191",
+            "errores": {
+                "404": 6,
+                "500": 3
+            }
+        },
+        {
+            "ip": "145.51.146.223",
+            "errores": {
+                "404": 2,
+                "500": 2
+            }
+        }
+    ],
+    "sqli_detectados": [
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/login?user=admin'--&pass=x",
+            "codigo": 500,
+            "patrones": [
+                "--",
+                "'"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/api/data?filter=1 OR 1=1",
+            "codigo": 500,
+            "patrones": [
+                "OR 1=1"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/login?user=admin'--&pass=x",
+            "codigo": 500,
+            "patrones": [
+                "--",
+                "'"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/products?cat=1; SELECT * FROM users--",
+            "codigo": 500,
+            "patrones": [
+                "SELECT",
+                "--"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/search?q=' OR 1=1--",
+            "codigo": 200,
+            "patrones": [
+                "--",
+                "OR 1=1",
+                "'"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/api/v1/users?id=1 UNION SELECT username,password FROM users--",
+            "codigo": 200,
+            "patrones": [
+                "UNION",
+                "SELECT",
+                "--"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/search?q=' OR 1=1--",
+            "codigo": 500,
+            "patrones": [
+                "--",
+                "OR 1=1",
+                "'"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/item?id=1 UNION SELECT null,table_name FROM information_schema.tables--",
+            "codigo": 500,
+            "patrones": [
+                "UNION",
+                "SELECT",
+                "--"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/products?cat=1; SELECT * FROM users--",
+            "codigo": 200,
+            "patrones": [
+                "SELECT",
+                "--"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/api/v1/users?id=1 UNION SELECT username,password FROM users--",
+            "codigo": 400,
+            "patrones": [
+                "UNION",
+                "SELECT",
+                "--"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/products?cat=1; SELECT * FROM users--",
+            "codigo": 200,
+            "patrones": [
+                "SELECT",
+                "--"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/search?q=' OR 1=1--",
+            "codigo": 500,
+            "patrones": [
+                "--",
+                "OR 1=1",
+                "'"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/api/data?filter=1 OR 1=1",
+            "codigo": 400,
+            "patrones": [
+                "OR 1=1"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/products?cat=1; SELECT * FROM users--",
+            "codigo": 500,
+            "patrones": [
+                "SELECT",
+                "--"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/login?user=admin'--&pass=x",
+            "codigo": 500,
+            "patrones": [
+                "--",
+                "'"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/login?user=admin'--&pass=x",
+            "codigo": 500,
+            "patrones": [
+                "--",
+                "'"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/api/data?filter=1 OR 1=1",
+            "codigo": 200,
+            "patrones": [
+                "OR 1=1"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/api/data?filter=1 OR 1=1",
+            "codigo": 400,
+            "patrones": [
+                "OR 1=1"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/item?id=1 UNION SELECT null,table_name FROM information_schema.tables--",
+            "codigo": 500,
+            "patrones": [
+                "UNION",
+                "SELECT",
+                "--"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/item?id=1 UNION SELECT null,table_name FROM information_schema.tables--",
+            "codigo": 400,
+            "patrones": [
+                "UNION",
+                "SELECT",
+                "--"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/search?q=' OR 1=1--",
+            "codigo": 500,
+            "patrones": [
+                "--",
+                "OR 1=1",
+                "'"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/item?id=1 UNION SELECT null,table_name FROM information_schema.tables--",
+            "codigo": 500,
+            "patrones": [
+                "UNION",
+                "SELECT",
+                "--"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/api/v1/users?id=1 UNION SELECT username,password FROM users--",
+            "codigo": 200,
+            "patrones": [
+                "UNION",
+                "SELECT",
+                "--"
+            ]
+        },
+        {
+            "ip": "193.32.162.55",
+            "ruta": "/api/v1/users?id=1 UNION SELECT username,password FROM users--",
+            "codigo": 500,
+            "patrones": [
+                "UNION",
+                "SELECT",
+                "--"
+            ]
+        }
+    ]
+}
