@@ -1,5 +1,4 @@
 # examen-practico-gutierrezanco
-<<<<<<< HEAD
 EVALUACIÓN PRÁCTICA FINAL DE UNIDAD - SEGURIDAD INFORMATICA
 =======
 ## Justificación de uso de AWS Academy/Educate
@@ -23,4 +22,4 @@ enunciado del examen.
 ### Evidencia de configuración
 - `evidencias/specs_pc_local1.png` — Captura de las especificaciones reales de mi equipo, CPU.
 - `evidencias/specs_pc_local2.png` — Captura de las especificaciones reales de mi equipo, memoria.
->>>>>>> f222ffe8928d6a600190ae4403321c60d5b7a2f3
+
