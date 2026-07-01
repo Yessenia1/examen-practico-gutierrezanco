@@ -234,23 +234,17 @@ lab1/
 | Software instalado | Wazuh All-in-One (Manager + Indexer + Dashboard) |
 | Versión Wazuh | 4.7.5 |
 
-**Justificación AWS:** se utilizó AWS Educate en lugar de entorno local por limitaciones de
-recursos computacionales en el equipo personal (no se cumple el mínimo recomendado de 8 GB
-RAM / 4 vCPU / 50 GB disco para correr Wazuh All-in-One de forma estable).
+**Justificación AWS:** se utilizó AWS Educate en lugar de entorno local por limitaciones de recursos computacionales en el equipo personal (no se cumple el mínimo recomendado de 8 GB RAM / 4 vCPU / 50 GB disco para correr Wazuh All-in-One de forma estable).
 
 ## Acceso al Dashboard
-
-```
 https://3.235.154.217
-```
 
-Se aceptó el certificado autofirmado (comportamiento esperado en instalaciones locales/AWS
-de Wazuh sin certificado válido de CA pública). El login mostrado al finalizar la instalación
-fue el usuario `admin` con la contraseña generada automáticamente por el instalador.
+
+Se aceptó el certificado autofirmado (comportamiento esperado en instalaciones locales/AWS de Wazuh sin certificado válido de CA pública). El login mostrado al finalizar la instalación fue el usuario `admin` con la contraseña generada automáticamente por el instalador.
 
 ## Tarea 2.1 — Regla: Brute Force SSH
 
-Archivo: `lab2/local_rules_ssh.xml`
+**Archivo:** `lab2/local_rules_ssh.xml`
 
 ```xml
 <!--
@@ -262,21 +256,47 @@ Archivo: `lab2/local_rules_ssh.xml`
     (verificado con grep en alerts.log).
 -->
 <group name="local,ssh,">
-    <rule id="100001" level="10" frequency="10" timeframe="60">
+    <rule id="100011" level="10" frequency="10" timeframe="60">
         <if_matched_sid>5760</if_matched_sid>
         <same_source_ip />
         <description>Ataque de fuerza bruta SSH detectado desde $(srcip)</description>
         <group>authentication_failures,brute_force</group>
     </rule>
 </group>
-```
 
-> **Nota técnica:** el enunciado sugería usar `5716` como regla padre. Al probar la
-> simulación, se verificó con `grep` sobre `alerts.log` que el log generado en este entorno
-> (`sshd: Failed password for <user> from <ip> port <puerto> ssh2`) en realidad es clasificado
-> por la regla **5760** (`sshd: authentication failed`), no por la 5716. Se ajustó
-> `if_matched_sid` en consecuencia tras diagnosticar el problema con `wazuh-logtest` y `grep`
-> sobre `alerts.log`.
+Comandos de validación y prueba
+
+# Validar sintaxis XML de la regla
+sudo xmllint --noout /var/ossec/etc/rules/local_rules_ssh.xml && echo "✅ XML VÁLIDO - Sin errores"
+
+# Reiniciar Wazuh Manager para cargar la nueva regla
+sudo systemctl restart wazuh-manager
+
+# Verificar que la regla se cargó sin errores
+sudo grep "100011" /var/ossec/logs/ossec.log | tail -5
+
+# Ejecutar simulador de fuerza bruta
+sudo bash /home/ubuntu/simular_bruteforce.sh
+
+# Verificar que la alerta se generó correctamente
+sudo grep "100011" /var/ossec/logs/alerts/alerts.log
+
+##Resultado esperado
+La regla se activa cuando se detectan 10 o más intentos fallidos de autenticación SSH desde la misma IP en un intervalo de 60 segundos, generando una alerta de nivel 10 con la descripción:
+
+
+Rule: 100011 (level 10) -> 'Ataque de fuerza bruta SSH detectado desde 45.33.32.156'
+Evidencia de funcionamiento
+La alerta generada queda registrada en /var/ossec/logs/alerts/alerts.log:
+
+sudo grep -A5 "100011" /var/ossec/logs/alerts/alerts.log
+#Nota técnica sobre el SID utilizado
+El enunciado sugería usar 5716 como regla padre (SID para "sshd: authentication failed" en versiones anteriores). Sin embargo, al probar la simulación en este entorno (Wazuh 4.7.5), se verificó con wazuh-logtest y grep sobre alerts.log que el log generado (sshd: Failed password for <user> from <ip> port <puerto> ssh2) es clasificado por la regla 5760 (sshd: authentication failed), que es el SID correcto para este formato de log en esta versión.
+
+#Nota sobre el ID de la regla
+Se utilizó el ID 100011 en lugar del 100001 sugerido en el enunciado para evitar conflictos con una regla existente en el archivo local_rules.xml que ya ocupaba el ID 100001. El rango 100000-199999 está reservado para reglas personalizadas en Wazuh.
+
+
 
 ## Tarea 2.2 — Regla: Exfiltración de datos
 
