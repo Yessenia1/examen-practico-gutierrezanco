@@ -1,0 +1,14 @@
+{
+  "name": "Wazuh Alerts",
+  "version": "4.14.5-1",
+  "type": "elasticsearch",
+  "index_patterns": ["wazuh-alerts-4.x-*"],
+  "timestamp_field": "@timestamp",
+  "host": "https://localhost:9200",
+  "ssl_enabled": true,
+  "auth": {
+    "username": "admin"
+  },
+  "description": "Fuente de datos para el Dashboard SOC - Monitor de Seguridad",
+  "created_date": "2026-07-01"
+}

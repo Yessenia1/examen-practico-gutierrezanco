@@ -1,0 +1,12 @@
+==========================================
+HERRAMIENTA DE MONITOREO
+==========================================
+
+Nombre: Wazuh Dashboard (Kibana)
+Versión: 4.14.5-1
+URL/IP: https://52.14.191.146
+Usuario: admin
+Index Pattern: wazuh-alerts-4.x-*
+Fecha: Wed Jul  1 00:27:05 -05 2026
+
+==========================================
