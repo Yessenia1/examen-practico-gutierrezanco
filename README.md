@@ -28,12 +28,12 @@ enunciado del examen.
 
 ### Instancias AWS utilizadas
 
-| Laboratorio | Servicio | Tipo | Región | AMI | Instance ID |
+| Laboratorio | Servicio | Tipo | Región | AMI |
 |---|---|---|---|---|---|
-| Lab 1 | EC2 | t3.micro | us-east-1 | Ubuntu 22.04 LTS | `<i-xxxxxxxx>` |
-| Lab 2 | EC2 | t3.medium | us-east-1 | Ubuntu 22.04 LTS | `<i-xxxxxxxx>` |
-| Lab 3 | EC2 / SageMaker | t3.medium | us-east-1 | Ubuntu 22.04 LTS | `<i-xxxxxxxx>` |
-| Lab 4 | EC2 | t3.small | us-east-1 | Ubuntu 22.04 LTS | `<i-xxxxxxxx>` |
+| Lab 1 | EC2 | t3.micro | us-east-1 | Ubuntu 22.04 LTS |
+| Lab 2 | EC2 | t3.medium | us-east-1 | Ubuntu 22.04 LTS |
+| Lab 3 | EC2 / SageMaker | t3.medium | us-east-1 | Ubuntu 22.04 LTS |
+| Lab 4 | EC2 | t3.small | us-east-1 | Ubuntu 22.04 LTS |
 
 ---
 
@@ -41,7 +41,7 @@ enunciado del examen.
 
 ### Descripción general
 
-Se analizaron dos archivos de logs de un servidor de producción (`srv-prod-01`):
+Se analizaron dos archivos de logs de un servidor:
 
 - `auth.log` — 500 líneas de log de autenticación SSH
 - `access.log` — 1000 líneas de log de acceso Apache HTTP
@@ -81,7 +81,7 @@ pip3 install matplotlib seaborn pandas --break-system-packages
 
 | Herramienta | Versión |
 |---|---|
-| Python | 3.11.x |
+| Python | 3.11 |
 | matplotlib | 3.11.0 |
 | seaborn | 0.13.2 |
 | pandas | 3.0.3 |
