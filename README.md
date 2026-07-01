@@ -29,7 +29,7 @@ enunciado del examen.
 ### Instancias AWS utilizadas
 
 | Laboratorio | Servicio | Tipo | Región | AMI |
-|---|---|---|---|---|---|
+|---|---|---|---|---|
 | Lab 1 | EC2 | t3.micro | us-east-1 | Ubuntu 22.04 LTS |
 | Lab 2 | EC2 | t3.medium | us-east-1 | Ubuntu 22.04 LTS |
 | Lab 3 | EC2 / SageMaker | t3.medium | us-east-1 | Ubuntu 22.04 LTS |
