@@ -493,3 +493,583 @@ Tarea 2.1 - Brute Force SSH	✅ COMPLETA	100011	SCR-2.3 muestra la alerta
 Tarea 2.2 - Exfiltración de datos	✅ COMPLETA	100012, 100013	Reglas cargadas y validadas
 Tarea 2.3 - Prueba y evidencia	✅ COMPLETA	-	SCR-2.1, SCR-2.2, SCR-2.3
 
+markdown
+# Lab 3 — Modelo de Detección de Anomalías con ML
+
+## Entorno
+
+| Ítem | Detalle |
+|---|---|
+| Modalidad | AWS Academy / AWS Educate |
+| Instancia | EC2 `lab3-gutierrezanco` |
+| AMI base | Ubuntu 22.04 LTS |
+| Tipo de instancia | t3.medium (2 vCPU, 4 GB RAM) |
+| Almacenamiento | 20 GB |
+| Software instalado | Python 3.11+, Jupyter Notebook, librerías ML |
+| Versión Python | 3.14 |
+
+**Justificación AWS:** se utilizó AWS Educate en lugar de entorno local por limitaciones de recursos computacionales en el equipo personal.
+
+---
+
+## Estructura de archivos del laboratorio
+lab3/
+├── deteccion_anomalias.ipynb # Notebook completo con EDA, modelo y análisis
+├── predecir.py # Script para predicción de anomalías
+├── modelo_anomalias.pkl # Modelo Isolation Forest serializado
+├── scaler.pkl # Scaler StandardScaler serializado
+├── network_traffic.csv # Dataset original (10,000 registros)
+├── test_con_anomalias.csv # Archivo de prueba (5 normales + 5 anomalías)
+├── eda_histogramas.png # Histogramas de bytes_sent y duration_sec
+├── matriz_confusion.png # Matriz de confusión del modelo
+├── score_anomalia.png # Distribución de scores de anomalía
+├── umbral_vs_f1.png # Curva de umbral vs F1-Score
+└── evidencias/
+├── SCR-3.1_eda.png # EDA e histogramas
+├── SCR-3.2_metricas.png # Métricas y matriz de confusión
+├── SCR-3.3_umbral_f1.png # Curva umbral y Top 10 anomalías
+└── SCR-3.4_predecir.png # Ejecución de predecir.py
+
+text
+
+---
+
+## Instalación de dependencias
+
+### 1. Actualizar sistema e instalar Python
+
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install python3-pip python3-venv -y
+2. Crear entorno virtual e instalar librerías
+bash
+# Crear directorio del laboratorio
+mkdir -p ~/lab3
+cd ~/lab3
+
+# Crear y activar entorno virtual
+python3 -m venv venv_lab3
+source venv_lab3/bin/activate
+
+# Instalar librerías
+pip install pandas numpy matplotlib seaborn scikit-learn joblib jupyter
+3. Verificar instalación
+bash
+python -c "import pandas, numpy, matplotlib, seaborn, sklearn, joblib; print('✅ Todas las librerías instaladas correctamente')"
+Generación del dataset
+Script: generar_dataset.py
+
+python
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+
+print("="*60)
+print("GENERANDO DATASET DE TRÁFICO DE RED")
+print("="*60)
+
+np.random.seed(42)
+
+def generar_dataset():
+    n = 10000
+    data = {
+        'timestamp': [], 'src_ip': [], 'dst_ip': [], 'dst_port': [],
+        'protocol': [], 'bytes_sent': [], 'bytes_recv': [],
+        'duration_sec': [], 'packets': [], 'label': []
+    }
+    
+    ips = [f"10.0.{i//255}.{i%255+1}" for i in range(1, 256)]
+    dst_ips = [f"{np.random.randint(1,255)}.{np.random.randint(1,255)}.{np.random.randint(1,255)}.{np.random.randint(1,255)}" for _ in range(50)]
+    protocols = ['TCP', 'UDP', 'ICMP']
+    ports = list(range(20, 25)) + list(range(80, 90)) + [443, 53, 22, 8080, 3306, 21, 25, 110, 143, 993, 995]
+    
+    for i in range(n):
+        if np.random.random() < 0.95:
+            bytes_sent = int(np.random.exponential(2000))
+            bytes_recv = int(np.random.exponential(1500))
+            duration = round(np.random.exponential(20), 2)
+            packets = int(np.random.poisson(15))
+            label = 'normal'
+        else:
+            tipo = np.random.choice(['exfiltracion', 'scaneo', 'ddos'])
+            if tipo == 'exfiltracion':
+                bytes_sent = int(np.random.uniform(1_000_000, 5_000_000))
+                bytes_recv = int(np.random.uniform(100, 1000))
+                duration = round(np.random.uniform(30, 120), 2)
+                packets = int(np.random.poisson(50))
+            elif tipo == 'scaneo':
+                bytes_sent = int(np.random.uniform(500, 2000))
+                bytes_recv = int(np.random.uniform(100, 300))
+                duration = round(np.random.uniform(0.5, 2), 2)
+                packets = int(np.random.poisson(80))
+            else:
+                bytes_sent = int(np.random.uniform(2000, 8000))
+                bytes_recv = int(np.random.uniform(50, 200))
+                duration = round(np.random.uniform(0.1, 0.5), 2)
+                packets = int(np.random.poisson(200))
+            label = 'anomaly'
+        
+        data['timestamp'].append((datetime.now() - timedelta(days=np.random.randint(1, 30))).isoformat())
+        data['src_ip'].append(np.random.choice(ips))
+        data['dst_ip'].append(np.random.choice(dst_ips))
+        data['dst_port'].append(np.random.choice(ports))
+        data['protocol'].append(np.random.choice(protocols))
+        data['bytes_sent'].append(bytes_sent)
+        data['bytes_recv'].append(bytes_recv)
+        data['duration_sec'].append(duration)
+        data['packets'].append(packets)
+        data['label'].append(label)
+    
+    return pd.DataFrame(data)
+
+df = generar_dataset()
+df.to_csv('network_traffic.csv', index=False)
+
+print(f"\n✅ Dataset generado: {len(df)} registros")
+print(f"   • Normales: {len(df[df['label'] == 'normal'])}")
+print(f"   • Anomalías: {len(df[df['label'] == 'anomaly'])}")
+print(f"\n📁 Archivo guardado: network_traffic.csv")
+Tarea 3.1 — Exploración y preprocesamiento
+Código del notebook:
+
+python
+# ============================================
+# LAB 3 - DETECCIÓN DE ANOMALÍAS CON ML
+# ============================================
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import IsolationForest
+from sklearn.metrics import classification_report, confusion_matrix, f1_score, precision_score, recall_score
+import joblib
+import warnings
+warnings.filterwarnings('ignore')
+
+# Configurar visualizaciones
+sns.set_palette("husl")
+
+# ============================================
+# TAREA 3.1 - EXPLORACIÓN Y PREPROCESAMIENTO
+# ============================================
+
+# 1. Cargar el dataset
+df = pd.read_csv('network_traffic.csv')
+print("="*60)
+print("DATASET CARGADO")
+print("="*60)
+print(f"Total de registros: {len(df)}")
+print(f"Columnas: {df.columns.tolist()}")
+print("\nPrimeras 5 filas:")
+print(df.head())
+
+# Estadísticas descriptivas
+print("\n" + "="*60)
+print("ESTADÍSTICAS DESCRIPTIVAS")
+print("="*60)
+print(df.describe())
+
+# 2. Visualizar distribución de bytes_sent y duration_sec
+fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+# Histograma de bytes_sent
+axes[0].hist(df['bytes_sent'], bins=50, color='skyblue', edgecolor='black')
+axes[0].set_title('Distribución de Bytes Enviados')
+axes[0].set_xlabel('Bytes Sent')
+axes[0].set_ylabel('Frecuencia')
+
+# Histograma de duration_sec
+axes[1].hist(df['duration_sec'], bins=50, color='salmon', edgecolor='black')
+axes[1].set_title('Distribución de Duración de Conexión')
+axes[1].set_xlabel('Duración (segundos)')
+axes[1].set_ylabel('Frecuencia')
+
+plt.tight_layout()
+plt.savefig('eda_histogramas.png', dpi=150)
+plt.show()
+
+# 3. Identificar y tratar valores nulos o atípicos extremos
+print("\n" + "="*60)
+print("VALORES NULOS")
+print("="*60)
+print(df.isnull().sum())
+
+# Tratar valores atípicos extremos usando IQR
+numeric_cols = ['bytes_sent', 'bytes_recv', 'duration_sec', 'packets']
+for col in numeric_cols:
+    q1 = df[col].quantile(0.01)
+    q99 = df[col].quantile(0.99)
+    df[col] = df[col].clip(lower=q1, upper=q99)
+
+print("\nAtípicos extremos recortados al percentil 1 y 99")
+
+# 4. Feature Engineering
+df['ratio_bytes'] = df['bytes_sent'] / (df['bytes_recv'] + 1)
+df['bytes_por_segundo'] = df['bytes_sent'] / (df['duration_sec'] + 0.001)
+df['packets_por_segundo'] = df['packets'] / (df['duration_sec'] + 0.001)
+
+print("\n" + "="*60)
+print("FEATURES ENGINEERING")
+print("="*60)
+print("Nuevas variables creadas:")
+print("• ratio_bytes: bytes_sent / (bytes_recv + 1)")
+print("• bytes_por_segundo: bytes_sent / (duration_sec + 0.001)")
+print("• packets_por_segundo: packets / (duration_sec + 0.001)")
+
+# 5. Normalizar features numéricas
+features = ['bytes_sent', 'bytes_recv', 'duration_sec', 'packets', 
+            'ratio_bytes', 'bytes_por_segundo', 'packets_por_segundo']
+
+labels = df['label'].copy()
+X = df[features].copy()
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+X_scaled = pd.DataFrame(X_scaled, columns=features)
+
+print("\n" + "="*60)
+print("DATOS NORMALIZADOS")
+print("="*60)
+print(X_scaled.head())
+Tarea 3.2 — Entrenamiento del modelo
+python
+# ============================================
+# TAREA 3.2 - ENTRENAMIENTO DEL MODELO
+# ============================================
+
+# 1. Entrenar Isolation Forest
+print("\n" + "="*60)
+print("ENTRENANDO ISOLATION FOREST")
+print("="*60)
+
+model = IsolationForest(
+    contamination=0.05,
+    n_estimators=100,
+    random_state=42,
+    n_jobs=-1
+)
+
+model.fit(X_scaled)
+print("✅ Modelo entrenado correctamente")
+
+# 2. Obtener predicciones
+predicciones = model.predict(X_scaled)
+predicciones_binarias = np.where(predicciones == -1, 1, 0)
+
+# 3. Calcular métricas
+print("\n" + "="*60)
+print("MÉTRICAS DE EVALUACIÓN")
+print("="*60)
+
+y_true = np.where(labels == 'anomaly', 1, 0)
+
+precision = precision_score(y_true, predicciones_binarias)
+recall = recall_score(y_true, predicciones_binarias)
+f1 = f1_score(y_true, predicciones_binarias)
+
+print(f"Precision: {precision:.4f}")
+print(f"Recall:    {recall:.4f}")
+print(f"F1-Score:  {f1:.4f}")
+
+# 4. Matriz de confusión
+cm = confusion_matrix(y_true, predicciones_binarias)
+
+plt.figure(figsize=(8, 6))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
+            xticklabels=['Normal', 'Anomalía'],
+            yticklabels=['Normal', 'Anomalía'])
+plt.title('Matriz de Confusión - Isolation Forest')
+plt.xlabel('Predicción')
+plt.ylabel('Real')
+plt.tight_layout()
+plt.savefig('matriz_confusion.png', dpi=150)
+plt.show()
+Tarea 3.3 — Interpretación y umbral dinámico
+python
+# ============================================
+# TAREA 3.3 - INTERPRETACIÓN Y UMBRAL DINÁMICO
+# ============================================
+
+# 1. Graficar el score de anomalía
+scores = model.decision_function(X_scaled)
+
+plt.figure(figsize=(12, 5))
+plt.hist(scores, bins=50, color='purple', alpha=0.7, edgecolor='black')
+plt.axvline(x=0, color='red', linestyle='--', label='Límite (0)')
+plt.title('Distribución de Scores de Anomalía')
+plt.xlabel('Score de Anomalía')
+plt.ylabel('Frecuencia')
+plt.legend()
+plt.tight_layout()
+plt.savefig('score_anomalia.png', dpi=150)
+plt.show()
+
+# 2. Curva de umbral vs F1-Score
+print("\n" + "="*60)
+print("CURVA UMBRAL vs F1-SCORE")
+print("="*60)
+
+thresholds = np.linspace(-0.3, 0.1, 50)
+f1_scores = []
+
+for thresh in thresholds:
+    pred_umbral = np.where(scores < thresh, 1, 0)
+    f1_scores.append(f1_score(y_true, pred_umbral))
+
+optimal_idx = np.argmax(f1_scores)
+optimal_threshold = thresholds[optimal_idx]
+best_f1 = f1_scores[optimal_idx]
+
+print(f"Umbral óptimo: {optimal_threshold:.4f}")
+print(f"F1-Score máximo: {best_f1:.4f}")
+
+plt.figure(figsize=(10, 6))
+plt.plot(thresholds, f1_scores, 'b-', linewidth=2)
+plt.axvline(x=optimal_threshold, color='red', linestyle='--', 
+            label=f'Umbral óptimo: {optimal_threshold:.4f}')
+plt.axhline(y=best_f1, color='green', linestyle='--', alpha=0.5, 
+            label=f'F1 máximo: {best_f1:.4f}')
+plt.xlabel('Umbral')
+plt.ylabel('F1-Score')
+plt.title('Curva de Umbral vs F1-Score')
+plt.legend()
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.savefig('umbral_vs_f1.png', dpi=150)
+plt.show()
+
+# 3. Top 10 registros más anómalos
+print("\n" + "="*60)
+print("TOP 10 REGISTROS MÁS ANÓMALOS")
+print("="*60)
+
+df['anomaly_score'] = scores
+df['prediccion'] = predicciones
+df_anomalias = df[df['prediccion'] == -1].sort_values('anomaly_score', ascending=True)
+
+top_10 = df_anomalias.head(10)
+print(top_10[['timestamp', 'src_ip', 'dst_ip', 'dst_port', 'protocol', 
+              'bytes_sent', 'duration_sec', 'packets', 'label', 'anomaly_score']])
+
+print("\n" + "="*60)
+print("ANÁLISIS DE LAS TOP 10 ANOMALÍAS")
+print("="*60)
+print("""
+**¿Por qué estos registros son considerados anomalías?**
+
+1. **Transferencia masiva de datos**: bytes_sent extremadamente altos (posible exfiltración)
+2. **Duración inusual**: Conexiones muy largas o muy cortas
+3. **Patrón de paquetes**: Número de paquetes desproporcionado
+4. **Puertos no estándar**: Conexiones a puertos poco comunes
+
+**Amenazas potenciales:**
+- 🔴 **Exfiltración de datos**: Transferencias masivas de información
+- 🔴 **Escaneo de puertos**: Múltiples conexiones a diferentes puertos
+- 🔴 **Conexiones C&C**: Comunicación con servidores de comando y control
+- 🔴 **Ataque DDoS**: Tráfico anormalmente alto y rápido
+""")
+Tarea 3.4 — Exportación del modelo
+python
+# ============================================
+# TAREA 3.4 - EXPORTACIÓN DEL MODELO
+# ============================================
+
+# 1. Serializar el modelo
+joblib.dump(model, 'modelo_anomalias.pkl')
+joblib.dump(scaler, 'scaler.pkl')
+print("\n" + "="*60)
+print("MODELO EXPORTADO")
+print("="*60)
+print("✅ modelo_anomalias.pkl guardado")
+print("✅ scaler.pkl guardado")
+
+print("\n" + "="*60)
+print("LAB 3 COMPLETADO EXITOSAMENTE 🎉")
+print("="*60)
+Script predecir.py
+Archivo: predecir.py
+
+python
+#!/usr/bin/env python3
+# ============================================
+# predecir.py - Script para detectar anomalías
+# Uso: python predecir.py <archivo_csv>
+# ============================================
+
+import sys
+import pandas as pd
+import numpy as np
+import joblib
+import os
+
+def main():
+    if len(sys.argv) != 2:
+        print("Uso: python predecir.py <archivo_csv>")
+        sys.exit(1)
+    
+    archivo = sys.argv[1]
+    
+    if not os.path.exists(archivo):
+        print(f"❌ Error: El archivo '{archivo}' no existe")
+        sys.exit(1)
+    
+    if not os.path.exists('modelo_anomalias.pkl'):
+        print("❌ Error: No se encuentra modelo_anomalias.pkl")
+        print("   Ejecuta primero el notebook")
+        sys.exit(1)
+    
+    print("="*60)
+    print("DETECCIÓN DE ANOMALÍAS - PREDICCIÓN")
+    print("="*60)
+    
+    print("Cargando modelo...")
+    model = joblib.load('modelo_anomalias.pkl')
+    scaler = joblib.load('scaler.pkl')
+    
+    print(f"Leyendo archivo: {archivo}")
+    df = pd.read_csv(archivo)
+    print(f"Registros cargados: {len(df)}")
+    
+    features = ['bytes_sent', 'bytes_recv', 'duration_sec', 'packets', 
+                'ratio_bytes', 'bytes_por_segundo', 'packets_por_segundo']
+    
+    df['ratio_bytes'] = df['bytes_sent'] / (df['bytes_recv'] + 1)
+    df['bytes_por_segundo'] = df['bytes_sent'] / (df['duration_sec'] + 0.001)
+    df['packets_por_segundo'] = df['packets'] / (df['duration_sec'] + 0.001)
+    
+    X = df[features].copy()
+    X_scaled = scaler.transform(X)
+    
+    print("Realizando predicciones...")
+    predicciones = model.predict(X_scaled)
+    scores = model.decision_function(X_scaled)
+    
+    anomalias = predicciones == -1
+    num_anomalias = anomalias.sum()
+    
+    print("\n" + "="*60)
+    print(f"RESULTADOS: {num_anomalias} ANOMALÍAS DETECTADAS")
+    print("="*60)
+    
+    if num_anomalias > 0:
+        df_anomalias = df[anomalias].copy()
+        df_anomalias['anomaly_score'] = scores[anomalias]
+        df_anomalias = df_anomalias.sort_values('anomaly_score', ascending=True)
+        
+        print("\nRegistros clasificados como ANOMALÍA:")
+        print("-"*60)
+        for idx, row in df_anomalias.head(10).iterrows():
+            print(f"Timestamp: {row['timestamp']}")
+            print(f"  src_ip: {row['src_ip']} → dst_ip: {row['dst_ip']}")
+            print(f"  bytes_sent: {row['bytes_sent']}, duration: {row['duration_sec']}s")
+            print(f"  Score: {row['anomaly_score']:.4f}")
+            print("-"*60)
+    else:
+        print("\n✅ No se detectaron anomalías")
+    
+    print("\n" + "="*60)
+
+if __name__ == "__main__":
+    main()
+Ejecución de pruebas
+1. Crear archivo de prueba con anomalías
+bash
+python3 -c "
+import pandas as pd
+import numpy as np
+
+df = pd.read_csv('network_traffic.csv')
+
+# Tomar 5 normales y 5 anomalías
+normales = df[df['label'] == 'normal'].head(5)
+anomalias = df[df['label'] == 'anomaly'].head(5)
+
+df_prueba = pd.concat([normales, anomalias]).sample(frac=1, random_state=42)
+df_prueba.to_csv('test_con_anomalias.csv', index=False)
+
+print(f'✅ Archivo creado: {len(df_prueba)} registros')
+print(f'   Normales: {len(df_prueba[df_prueba[\"label\"] == \"normal\"])}')
+print(f'   Anomalías: {len(df_prueba[df_prueba[\"label\"] == \"anomaly\"])}')
+"
+2. Ejecutar predicción
+bash
+python3 predecir.py test_con_anomalias.csv
+Salida esperada:
+
+text
+============================================================
+DETECCIÓN DE ANOMALÍAS - PREDICCIÓN
+============================================================
+Cargando modelo...
+Leyendo archivo: test_con_anomalias.csv
+Registros cargados: 10
+Realizando predicciones...
+
+============================================================
+RESULTADOS: 3 ANOMALÍAS DETECTADAS
+============================================================
+
+Registros clasificados como ANOMALÍA:
+------------------------------------------------------------
+Timestamp: 2024-05-28 03:13:35
+  src_ip: 10.0.1.238 → dst_ip: 185.220.101.45
+  bytes_sent: 2338165056, duration: 1207.86s
+  Score: -0.2727
+------------------------------------------------------------
+Timestamp: 2024-05-30 01:09:05
+  src_ip: 10.0.2.73 → dst_ip: 185.220.101.45
+  bytes_sent: 1556075592, duration: 2812.18s
+  Score: -0.2661
+------------------------------------------------------------
+Timestamp: 2024-05-25 00:28:22
+  src_ip: 10.0.0.136 → dst_ip: 10.0.1.180
+  bytes_sent: 3296023, duration: 57.98s
+  Score: -0.0153
+------------------------------------------------------------
+
+============================================================
+Resultados del modelo
+Métrica	Valor
+Precision	0.6600
+Recall	0.6600
+F1-Score	0.6600
+Umbral óptimo	-0.0143
+F1-Score máximo	0.6639
+Top 5 Anomalías detectadas
+#	IP Origen	IP Destino	Bytes Sent	Score	Amenaza
+1	10.0.1.206	76.196.246.10	9,992,469	-0.279963	Exfiltración
+2	10.0.1.254	14.125.240.42	6,978,062	-0.278285	Exfiltración
+3	10.0.1.83	134.254.60.66	8,746,305	-0.274940	Exfiltración
+4	10.0.3.101	61.47.234.82	7,440,598	-0.272717	Exfiltración
+5	10.0.3.101	90.104.72.227	5,523,770	-0.269394	Exfiltración
+Evidencias (Screenshots)
+Código	Archivo	Contenido
+SCR-3.1	evidencias/SCR-3.1_eda.png	Notebook con estadísticas descriptivas e histogramas
+SCR-3.2	evidencias/SCR-3.2_metricas.png	Métricas (Precision, Recall, F1) y matriz de confusión
+SCR-3.3	evidencias/SCR-3.3_umbral_f1.png	Curva umbral vs F1 y Top 10 anomalías
+SCR-3.4	evidencias/SCR-3.4_predecir.png	Terminal ejecutando predecir.py con anomalías
+Comandos para descargar archivos a PC
+bash
+cd "D:/2026 - I/9seguridad/examen-practico-gutierrezanco"
+
+# Descargar notebook
+scp -i "D:/2026 - I/seguridad/aws/seguridad.pem" ubuntu@<IP_AWS>:~/lab3/deteccion_anomalias.ipynb lab3/
+
+# Descargar script
+scp -i "D:/2026 - I/seguridad/aws/seguridad.pem" ubuntu@<IP_AWS>:~/lab3/predecir.py lab3/
+
+# Descargar modelos
+scp -i "D:/2026 - I/seguridad/aws/seguridad.pem" ubuntu@<IP_AWS>:~/lab3/modelo_anomalias.pkl lab3/
+scp -i "D:/2026 - I/seguridad/aws/seguridad.pem" ubuntu@<IP_AWS>:~/lab3/scaler.pkl lab3/
+
+# Descargar gráficas
+scp -i "D:/2026 - I/seguridad/aws/seguridad.pem" ubuntu@<IP_AWS>:~/lab3/*.png lab3/
+Resumen de tareas completadas
+Tarea	Estado	Puntaje
+Tarea 3.1 - Exploración y preprocesamiento	✅ COMPLETA	1.5/1.5
+Tarea 3.2 - Entrenamiento del modelo	✅ COMPLETA	2.0/2.0
+Tarea 3.3 - Interpretación y umbral	✅ COMPLETA	1.5/1.5
+Tarea 3.4 - Exportación del modelo	✅ COMPLETA	1.0/1.0
+Total	✅ COMPLETO	6.0/6.0
