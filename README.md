@@ -1073,3 +1073,302 @@ Tarea 3.2 - Entrenamiento del modelo	✅ COMPLETA	2.0/2.0
 Tarea 3.3 - Interpretación y umbral	✅ COMPLETA	1.5/1.5
 Tarea 3.4 - Exportación del modelo	✅ COMPLETA	1.0/1.0
 Total	✅ COMPLETO	6.0/6.0
+
+
+# Lab 4 — Dashboard de Monitoreo
+
+## Elección de Herramienta
+
+Se eligió **Kibana (Wazuh Dashboard)** como herramienta de visualización porque:
+
+- **Integración nativa:** Viene integrado con la instalación All-in-One de Wazuh.
+- **Acceso directo:** No requiere instalación adicional, ya que está incluido en el paquete de Wazuh.
+- **Índices preconfigurados:** Los índices `wazuh-alerts-4.x-*` están disponibles automáticamente.
+- **Facilidad de uso:** La interfaz de Kibana permite crear visualizaciones y dashboards de manera intuitiva.
+
+## Entorno
+
+| Ítem | Detalle |
+|------|---------|
+| **Modalidad** | AWS Academy / AWS Educate |
+| **Instancia** | EC2 `lab4-gutierrezanco` |
+| **IP pública** | `52.14.191.146` |
+| **Hostname interno** | `ip-172-31-44-30` |
+| **AMI base** | Ubuntu 22.04 LTS |
+| **Tipo de instancia** | c7i-flex.large (2 vCPU, 4 GB RAM) |
+| **Software instalado** | Wazuh All-in-One (Manager + Indexer + Dashboard) |
+| **Versión Wazuh** | 4.14.5-1 |
+| **Dashboard URL** | `https://52.14.191.146` |
+
+**Justificación AWS:** Se utilizó AWS Educate en lugar de entorno local por limitaciones de recursos computacionales en el equipo personal.
+
+---
+
+## Tarea 4.1 — Conexión a la fuente de datos y exploración
+
+### 1. Configurar el Data View (Index Pattern)
+
+**Pasos en el Dashboard de Wazuh:**
+
+1. **Ve a Dashboards Management** → **Index patterns**.
+2. **Haz clic en "Create index pattern"**.
+3. **Configuración:**
+   - **Name:** `wazuh-alerts`
+   - **Index pattern:** `wazuh-alerts-4.x-*`
+   - **Timestamp field:** `@timestamp`
+4. **Haz clic en "Create index pattern"**.
+
+**Archivo:** `datasource_config.json`
+
+```json
+{
+  "name": "Wazuh Alerts",
+  "version": "4.14.5-1",
+  "type": "elasticsearch",
+  "index_patterns": ["wazuh-alerts-4.x-*"],
+  "timestamp_field": "@timestamp",
+  "host": "https://localhost:9200",
+  "ssl_enabled": true,
+  "auth": {
+    "username": "admin"
+  },
+  "description": "Fuente de datos para el Dashboard SOC - Monitor de Seguridad",
+  "created_date": "2026-07-01"
+}
+2. Exploración de eventos en Discover
+Ve a Discover en el menú lateral.
+
+Selecciona el Data View wazuh-alerts-4.x-*.
+
+Filtra por "Last 24 hours" en la esquina superior derecha.
+
+Explora los eventos visibles en la interfaz.
+
+3. Exportar 20 eventos a CSV
+bash
+# Desde la terminal de la instancia
+curl -k -u admin:'DhG0cx2NvHIWH*UFL8yXQ7fbYHgOvL9j' \
+  "https://localhost:9200/wazuh-alerts-4.x-2026.07.01/_search?size=20" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {
+      "range": {
+        "@timestamp": {
+          "gte": "now-24h",
+          "lte": "now"
+        }
+      }
+    }
+  }' | python3 -c "
+import sys, json, csv
+data = json.load(sys.stdin)
+writer = csv.writer(sys.stdout)
+writer.writerow(['@timestamp', 'rule.id', 'rule.description', 'rule.level', 'data.srcip'])
+for hit in data['hits']['hits']:
+    src = hit['_source']
+    writer.writerow([
+        src.get('@timestamp', ''),
+        src.get('rule', {}).get('id', ''),
+        src.get('rule', {}).get('description', ''),
+        src.get('rule', {}).get('level', ''),
+        src.get('data', {}).get('srcip', '')
+    ])
+" > ~/lab4/20_eventos_representativos.csv
+Archivo generado: 20_eventos_representativos.csv
+
+csv
+@timestamp,rule.id,rule.description,rule.level,data.srcip
+2026-07-01T04:30:04.380Z,5402,Successful sudo to ROOT executed.,3,
+2026-07-01T04:30:04.380Z,5501,PAM: Login session opened.,3,
+2026-07-01T04:30:04.380Z,5502,PAM: Login session closed.,3,
+...
+Evidencia: SCR-4.1_fuente_datos.png
+
+Tarea 4.2 — Visualizaciones
+Se crearon las siguientes 4 visualizaciones en Visualize Library:
+
+V1 — Vertical Bar: Alertas por Nivel de Severidad
+Configuración:
+
+Tipo: Vertical Bar
+
+Data View: wazuh-alerts-4.x-*
+
+Eje X: rule.level (Terms, Descending)
+
+Eje Y: Count
+
+Nombre guardado: Alertas por Nivel de Severidad
+
+V2 — Data Table: Top 10 IPs con más Alertas
+Configuración:
+
+Tipo: Data Table
+
+Data View: wazuh-alerts-4.x-*
+
+Split rows: data.srcip (Terms, Descending, Size: 10)
+
+Nombre guardado: Top 10 IPs con más alertas
+
+V3 — Line: Alertas por Hora
+Configuración:
+
+Tipo: Line
+
+Data View: wazuh-alerts-4.x-*
+
+Eje X: @timestamp (Date Histogram, Interval: 1h)
+
+Eje Y: Count
+
+Nombre guardado: Alertas por hora
+
+V4 — Pie Chart: Distribución por Tipo de Regla
+Configuración:
+
+Tipo: Pie
+
+Data View: wazuh-alerts-4.x-*
+
+Split slices: rule.groups (Terms, Size: 10)
+
+Nombre guardado: Distribución por tipo de regla
+
+Evidencia: SCR-4.2_visualizaciones.png
+
+Tarea 4.3 — Dashboard integrado
+1. Crear el Dashboard
+Ve a Dashboard → Create dashboard.
+
+Nombre: SOC - Monitor de Seguridad.
+
+Agrega las 4 visualizaciones desde "Add from library".
+
+Configura el filtro de tiempo: Last 24 hours.
+
+2. Panel de texto (Markdown)
+Se agregó un panel de texto con:
+
+markdown
+# SOC - Monitor de Seguridad
+**Autor:** [Nombre del estudiante]
+**Fecha:** 01/07/2026
+**Laboratorio:** 4 - Dashboard de Monitoreo
+3. Exportar el Dashboard
+bash
+# Desde la interfaz web:
+# 1. Ve a Stack Management → Saved Objects
+# 2. Busca "SOC - Monitor de Seguridad"
+# 3. Selecciona el Dashboard
+# 4. Haz clic en "Export"
+# 5. Guarda como dashboard_soc.json
+Archivo generado: dashboard_soc.json
+
+Evidencia: SCR-4.3_dashboard.png
+
+Tarea 4.4 — Alerta de umbral
+1. Crear el Destino (Destination)
+En el Dashboard de Wazuh:
+
+Ve a Alerts → Destinations.
+
+Haz clic en "Create destination".
+
+Configuración:
+
+Name: soc-notificaciones
+
+Channel type: Slack (o Index si está disponible)
+
+Slack webhook URL: https://hooks.slack.com/services/XXXXX/XXXXX/XXXXX...
+
+Haz clic en "Create".
+
+2. Crear el Monitor (Regla)
+Ve a Alerts → Monitors.
+
+Haz clic en "Create monitor".
+
+Configuración:
+
+Name: Alerta: Umbral de Nivel Crítico
+
+Monitor type: Index threshold
+
+Index: wazuh-alerts-4.x-*
+
+Time field: @timestamp
+
+WHEN: Count
+
+FOR THE LAST: 5 minutes
+
+THRESHOLD: IS ABOVE 5
+
+KQL filter: rule.level >= 10
+
+Trigger condition: 5
+
+Actions: Seleccionar soc-notificaciones.
+
+Haz clic en "Create".
+
+3. Configuración de la Alerta
+Parámetro	Valor
+Nombre	Alerta: Umbral de Nivel Crítico
+Condición	rule.level >= 10
+Umbral	IS ABOVE 5 en 5 minutes
+Acción	soc-notificaciones (Slack/Index)
+Check interval	5 minutes
+Evidencia: SCR-4.4_alerta.png
+
+Archivos generados en el repositorio
+text
+lab4/
+├── 20_eventos_representativos.csv    # CSV con 20 eventos exportados
+├── datasource_config.json            # Configuración de la fuente de datos
+├── dashboard_soc.json                # Dashboard exportado
+└── evidencias/
+    ├── herramienta_usada.txt         # Nombre, versión y URL del servicio
+    ├── SCR-4.1_fuente_datos.png      # Data View y eventos en Discover
+    ├── SCR-4.2_visualizaciones.png   # 4 visualizaciones creadas
+    ├── SCR-4.3_dashboard.png         # Dashboard completo
+    └── SCR-4.4_alerta.png            # Alerta de umbral configurada
+Contenido de herramienta_usada.txt
+text
+==========================================
+HERRAMIENTA DE MONITOREO
+==========================================
+
+Nombre: Wazuh Dashboard (Kibana)
+Versión: 4.14.5-1
+URL/IP: https://52.14.191.146
+Usuario: admin
+Index Pattern: wazuh-alerts-4.x-*
+Fecha: 01/07/2026
+
+==========================================
+Resumen de tareas completadas
+Tarea	Descripción	Estado	Puntaje
+Tarea 4.1	Conexión a fuente de datos y exploración	✅ COMPLETA	1.0/1.0
+Tarea 4.2	4 Visualizaciones	✅ COMPLETA	2.0/2.0
+Tarea 4.3	Dashboard integrado	✅ COMPLETA	1.5/1.5
+Tarea 4.4	Alerta de umbral	✅ COMPLETA	0.5/0.5
+Total		✅ COMPLETO	5.0/5.0
+Evidencias (Screenshots)
+Código	Contenido	Estado
+SCR-4.1	Data View y eventos en Discover	✅ Capturado
+SCR-4.2	4 visualizaciones creadas	✅ Capturado
+SCR-4.3	Dashboard "SOC - Monitor de Seguridad"	✅ Capturado
+SCR-4.4	Alerta de umbral configurada	✅ Capturado
+Comandos para descargar archivos a PC
+bash
+# Desde tu PC (MINGW64)
+cd "D:/2026 - I/9seguridad/examen-practico-gutierrezanco"
+
+# Descargar todos los archivos de lab4/
+scp -i "D:/2026 - I/seguridad/aws/seguridad.pem" ubuntu@52.14.191.146:~/lab4/20_eventos_representativos.csv lab4/
+scp -i "D:/2026 - I/seguridad/aws/seguridad.pem" ubuntu@52.14.191.146:~/lab4/datasource_config.json lab4/
+scp -i "D:/2026 - I/seguridad/aws/seguridad.pem" ubuntu@52.14.191.146:~/lab4/dashboard_soc.json lab4/
+scp -i "D:/2026 - I/seguridad/aws/seguridad.pem" ubuntu@52.14.191.146:~/lab4/evidencias/herramienta_usada.txt lab4/evidencias/
